@@ -1,0 +1,8 @@
+/.DS_Store
+/KoboRoot.tgz
+/tmp/
+/src/libnickelhintfix.so
+
+*.o
+*.moc
+nhplugin.json

@@ -1,0 +1,11 @@
+#
+# NickelHintFix configuration
+#
+# Allows you to tweak how hinting and glyph grid fitting works on Kobo devices.
+# Changes take effect on reboot, so you will need to restart your device.
+#
+
+nhf_enabled:1
+nhf_no_hinting:1
+nhf_fractional_cbox:1
+nhf_hinting_allowlist:

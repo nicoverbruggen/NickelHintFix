@@ -1,0 +1,24 @@
+# NickelHintFix
+
+Fixes a vertical "wobble" in Kobo's reader where individual letters drift up/down
+by a pixel, on fonts that request grid-fitting (via their gasp table) but ship no
+per-glyph hinting instructions (e.g. KF Adelph). iType grid-fits those raw outlines
+itself and snaps the same letter to different pixel heights in different places.
+
+NickelHintFix loads glyphs with FT_LOAD_NO_HINTING so iType draws the raw outline
+(as desktop FreeType does for these glyphs) and the line goes flat. iType stays the
+renderer.
+
+## Preferences (KOBOeReader/.adds/nickelhintfix/config)
+
+- nhf_enabled:1            enable/disable; 0 = behaves as if not installed
+- nhf_no_hinting:1         load glyphs unhinted (the fix); 0 = stock behaviour
+- nhf_fractional_cbox:1    copy the raw outline control box into glyph metrics
+- nhf_hinting_allowlist:   comma-separated families exempt from nhf_no_hinting
+
+Changes take effect on reboot.
+
+## Uninstall
+
+Delete KOBOeReader/.adds/nickelhintfix/uninstall and reboot. The mod never
+self-uninstalls on errors (a safety trip only disables it for that boot).
