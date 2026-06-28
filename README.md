@@ -6,17 +6,22 @@ It fixes the defect by loading affected glyphs **without hinting**, so Kobo's ra
 
 ## The defect (what's actually happening)
 
-Some fonts ship a **`gasp` table requesting grid-fitting at all sizes** but carry **no per-glyph hinting instructions** — the glyphs are unhinted outlines. A real-world example is **KF Adelph** (`unitsPerEm=1000`, a full `fpgm`/`prep`, `gasp = 0xFFFF→15`, and zero glyph instructions).
+The wobble comes from how Kobo's rasterizer, Monotype **iType**, treats fonts whose glyphs carry **no per-glyph hinting instructions** — plain unhinted outlines. A real-world example is **KF Adelph** (`unitsPerEm=1000`, a full `fpgm`/`prep`/`cvt`, but zero glyph instructions).
 
-When such a font is used, **iType honors the `gasp` request and grid-fits the uninstructed outlines itself**, snapping each glyph's top and bottom to the pixel grid. That grid-fitting is **sub-pixel-position-sensitive**, so the *same letter* gets snapped to a different integer height depending on where it falls in a line. At a single font size, the letters `a`, `r`, `s`, `u` each render at both 26px and 27px, and `T` at both 39px and 40px — that inconsistency is the wobble, and it can be measured directly from the rasterized pixels.
+iType is registered as a hinting-capable driver, so whenever a glyph is loaded **with hinting requested — which Nickel does by default** — iType grid-fits the outline. For a glyph that has no instructions to follow, iType falls back to its **own automatic grid-fitting**, snapping the glyph's top to a whole pixel row. That snap is **sub-pixel-position-sensitive**, so the *same letter* lands on a different integer height depending on where it falls in a line. At a single font size, the letters `a`, `r`, `s`, `u` each render at both 26px and 27px, and `T` at both 39px and 40px — that inconsistency is the wobble, and it can be measured directly from the rasterized pixels.
 
-**Stock and desktop FreeType ignore the `gasp` request** for uninstructed glyphs (no glyph instructions means nothing to execute), which is why the font looks fine on other devices. The grid-fitting happens in the iType driver at glyph-load, below the renderer, which is why swapping the renderer does not help but a load-time flag does.
+Two natural assumptions about the font turn out to be wrong — confirmed by disassembling Kobo's `libfreetype.so` (which wraps iType):
+
+- The font's **`gasp` table is not the cause.** iType parses `gasp` into the face but never reads it while rendering, so editing `gasp` (e.g. clearing the grid-fit request) changes nothing.
+- The font's **`fpgm`/`prep`/`cvt` programs are not the cause either.** iType's instruction interpreter is the only consumer of those tables, and it is invoked only for glyphs that *have* instructions. Unhinted glyphs bypass it entirely, so stripping those tables changes nothing.
+
+The actual trigger is simply that **hinting is requested at glyph-load**, and the only switch the engine honors is the runtime load flag. This also explains why the same fonts look fine elsewhere: **desktop/stock FreeType** renders them with its auto-hinter (position-stable) or the stock TrueType hinter — not iType's auto-gridfit. The snapping happens inside the iType driver at glyph-load, below the renderer, which is why swapping the renderer doesn't help but a load-time flag does.
 
 ## The fix
 
-NickelHintFix hooks `FT_Load_Glyph` (in Kobo's `libkobo.so` platform plugin) and ORs in **`FT_LOAD_NO_HINTING`**, so iType emits the raw outline and the same letter renders at a consistent height. With the fix on, each affected letter renders at exactly one height and iType's grid-fit snapping is gone.
+NickelHintFix hooks `FT_Load_Glyph` (in Kobo's `libkobo.so` platform plugin) and ORs in **`FT_LOAD_NO_HINTING`** before the real call (`0x208` → `0x20a`). That sets iType's internal "skip grid-fit" flag, so it emits the raw scaled outline with no snapping. Every instance of a glyph then has identical geometry and the same letter renders at exactly one height — confirmed on-device, where each affected letter collapses from two heights to one.
 
-Native TrueType grid-fitting buys very little on Kobo's ~300 DPI panel, so applying this broadly is low-cost. An allow-list exempts any font you specifically want hinted.
+Hinting buys very little on Kobo's ~300 DPI panel (KOReader ignores it at this resolution too), so applying this broadly is low-cost. An allow-list exempts any font you specifically want to keep natively hinted.
 
 ## Build
 
