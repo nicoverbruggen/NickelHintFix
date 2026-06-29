@@ -94,6 +94,7 @@ Hinting buys very little on Kobo's ~300 DPI panel (KOReader ignores it at this r
 Install Podman and build with NickelTC:
 
 ```sh
+git submodule update --init
 ./build.sh
 ```
 
