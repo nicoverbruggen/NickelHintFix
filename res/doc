@@ -9,11 +9,23 @@ NickelHintFix loads glyphs with FT_LOAD_NO_HINTING so iType draws the raw outlin
 (as desktop FreeType does for these glyphs) and the line goes flat. iType stays the
 renderer.
 
+## Vertical-text fix
+
+It also fixes vertical (tategaki) CJK books rendering wrong when "better typography"
+(eReader.conf webkitTextRendering=optimizeLegibility) is on. That setting forces
+WebKit's complex text path, which has no vertical-writing-mode support, so the chōonpu
+ー, brackets 「」, and punctuation 、。 come out horizontal/mislaid. For vertical books
+only, NickelHintFix rewrites the injected `optimizeLegibility`/`geometricPrecision` back
+to `auto`, keeping them on the simple path (the one that renders tategaki correctly).
+Horizontal books are untouched, and the feature is never turned on — only withheld from
+vertical books — so your eReader.conf choice is otherwise respected.
+
 ## Preferences (KOBOeReader/.adds/nickelhintfix/config)
 
-- nhf_enabled:1            enable/disable; 0 = behaves as if not installed
-- nhf_no_hinting:1         load glyphs unhinted (the fix); 0 = stock behaviour
+- nhf_enabled:1            enable/disable everything; 0 = behaves as if not installed
+- nhf_no_hinting:1         load glyphs unhinted (the hinting fix); 0 = stock behaviour
 - nhf_hinting_allowlist:   comma-separated families exempt from nhf_no_hinting
+- nhf_vertfix:1            withhold optimizeLegibility from vertical books; 0 = off
 
 Changes take effect on reboot.
 

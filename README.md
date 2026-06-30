@@ -1,8 +1,11 @@
 # NickelHintFix
 
-NickelHintFix is a [NickelHook](https://github.com/pgaskin/NickelHook) mod for Kobo eReaders that fixes a vertical **"wobble"** in the reader: with certain fonts, individual letters drift up or down by a pixel relative to the baseline, producing a visibly uneven line. The same fonts render cleanly on other devices.
+NickelHintFix is a [NickelHook](https://github.com/pgaskin/NickelHook) mod for Kobo eReaders that fixes two font-rendering defects in the reader's old (4.x) WebKit/iType stack:
 
-It fixes the defect by loading non-allowlisted glyphs **without hinting**, so Kobo's rasterizer (Monotype iType) draws the raw outline instead of grid-fitting it. iType stays the renderer for everything else, so this is a small, targeted change.
+1. **Glyph "wobble"** — with certain fonts, individual letters drift up or down by a pixel relative to the baseline, producing a visibly uneven line. The same fonts render cleanly on other devices.
+2. **Broken vertical (tategaki) CJK text** when "better typography" is enabled — Japanese/Chinese vertical books render with the long-vowel mark `ー`, brackets `「」`, and punctuation `、。` horizontal or mislaid.
+
+The wobble is fixed by loading non-allowlisted glyphs **without hinting**, so Kobo's rasterizer (Monotype iType) draws the raw outline instead of grid-fitting it. The vertical-text breakage is fixed by withholding `optimizeLegibility` from vertical books so they stay on WebKit's vertical-capable rendering path. Both are small, targeted, per-condition changes; iType stays the renderer.
 
 > [!NOTE]
 > The binary observations in this README were made to understand and fix a font-rendering bug in the Kobo software 4.x font stack. They are included to document why NickelHintFix changes a FreeType glyph-load flag, and to keep the fix limited to that compatibility issue. This kind of investigation is only practical because Kobo maintains an open device ecosystem and allows SSH access to their devices, which I appreciate and strongly encourage as a developer. This project does not include or redistribute Kobo firmware, Kobo binaries, or Monotype iType code.
@@ -89,6 +92,19 @@ NickelHintFix hooks `FT_Load_Glyph` (in Kobo's `libkobo.so` platform plugin) and
 
 Hinting buys very little on Kobo's ~300 DPI panel (KOReader ignores it at this resolution too), so applying this broadly is low-cost. An allow-list exempts any font you specifically want to keep natively hinted.
 
+## The vertical-text fix
+
+Kobo's "better typography" toggle sets `webkitTextRendering=optimizeLegibility` in `eReader.conf`, which Nickel injects as `text-rendering: optimizeLegibility` into every book's stylesheet. In the device's old Qt 5.2 WebKit that forces the **complex text path** (`QTextLayout`-based), which has **no vertical-writing-mode support** — so vertical (tategaki) books lose per-glyph vertical orientation: the long-vowel mark `ー`, brackets `「」`, and ideographic punctuation `、。` come out in their horizontal forms. WebKit's **simple path** renders vertical text correctly; the only reason the book lands on the broken path is the injected `optimizeLegibility`.
+
+Rather than fight that injected value, NickelHintFix overrides it on the **live page**: when a view's writing mode is applied (`CustomWebView::setWritingDirection`) and it's vertical, it pushes a tiny **user stylesheet** — `*{text-rendering:auto !important}` — onto that page's `QWebSettings`. A *user-origin* `!important` rule outranks the author's `optimizeLegibility`, so WebKit re-cascades and re-renders the page on the simple path immediately. For non-vertical views the stylesheet is cleared, so horizontal books keep "better typography" untouched.
+
+This indirection is deliberate, and was found by on-device tracing (see the kobo-font-investigation reports): the obvious seams don't work. `KepubBookReader::pageStyleCss`/`setWritingDirection` are *virtual* methods — NickelHook can only patch PLT (`JUMP_SLOT`) entries, not vtable slots — so they can't be hooked. And `ReadingSettings::getWebkitTextRendering` (the value source) is read *before* the book's vertical writing-mode is ever parsed, and never re-read, so rewriting its return is futile. Overriding the already-rendered page once vertical *is* known is the reliable path. The vertical enum values are still derived at runtime from Nickel's own `writingDirectionFromString` (no hardcoded magic numbers).
+
+> [!NOTE]
+> This keys on the book's **writing mode, not its language** — so it applies to *any* vertical book (Japanese, Traditional Chinese, etc.), and leaves *all* horizontal books alone (they don't hit this bug, in any language). That's the correct discriminator: the defect is specific to vertical writing mode, not to a particular `lang`.
+
+Every Nickel symbol it hooks or resolves is marked **optional**: if a firmware update renames any of them, the vertical fix simply goes inert and the hinting fix above is unaffected.
+
 ## Build
 
 Install Podman and build with NickelTC:
@@ -117,6 +133,7 @@ Settings live in `KOBOeReader/.adds/nickelhintfix/config`:
 | `nhf_enabled` | `1` | Enable or disable NickelHintFix. `0` makes every hook pass through, so the device renders exactly as if the mod were not installed. |
 | `nhf_no_hinting` | `1` | The fix. `1` loads glyphs with `FT_LOAD_NO_HINTING` (no iType grid-fitting, so heights are consistent). `0` is stock behaviour. |
 | `nhf_hinting_allowlist` | *(empty)* | Comma-separated font families exempt from `nhf_no_hinting` (allowed to keep their own native hinting). Matched case-insensitively, e.g. `Georgia, Kobo Nickel`. |
+| `nhf_vertfix` | `1` | The vertical-text fix. `1` withholds `optimizeLegibility`/`geometricPrecision` from vertical (tategaki) books so they render correctly. `0` leaves Nickel's behaviour unchanged. |
 
 Changes take effect on reboot.
 
