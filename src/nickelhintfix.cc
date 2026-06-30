@@ -135,12 +135,6 @@ static bool nhf_vertfix() {
     return nhf_global_config_bool("nhf_vertfix", true);
 }
 
-// Verbose per-call tracing for the vertical fix. Off by default — setWritingDirection fires
-// several times per page turn. Add nhf_vertfix_debug:1 to the config to enable it.
-static bool nhf_vertfix_debug() {
-    return nhf_global_config_bool("nhf_vertfix_debug", false);
-}
-
 // Comma-separated font families allowed to keep their own native hinting (i.e.
 // exempt from nhf_no_hinting). Matched case-insensitively against the FT face.
 static bool nhf_font_hinting_allowed(FT_Face face) {
@@ -376,8 +370,6 @@ static void nhf_apply_vertical_css(void *cwv, bool vertical) {
 extern "C" __attribute__((visibility("default")))
 void *_nhf_kepubReaderCtor(void *self, void *pluginState, void *widget) {
     nhf_us_applied = -1;
-    if (nhf_vertfix_debug())
-        NHF_LOG("KepubBookReader ctor: reset vertical state");
     if (real_kepubReaderCtor)
         return real_kepubReaderCtor(self, pluginState, widget);
     return self;
@@ -395,12 +387,6 @@ void _nhf_cwv_setWritingDirection(void *self, int dir) {
     if (act && want != nhf_us_applied) {
         nhf_apply_vertical_css(self, vert);
         nhf_us_applied = want;
-        if (nhf_vertfix_debug())
-            NHF_LOG("CustomWebView::setWritingDirection: dir=%d -> user-css %s",
-                dir, vert ? "ON (text-rendering:auto)" : "OFF");
-    } else if (nhf_vertfix_debug()) {
-        NHF_LOG("CustomWebView::setWritingDirection: dir=%d vert=%d act=%d applied=%d (no change)",
-            dir, vert ? 1 : 0, act ? 1 : 0, nhf_us_applied);
     }
     if (real_cwv_setWritingDirection)
         real_cwv_setWritingDirection(self, dir);

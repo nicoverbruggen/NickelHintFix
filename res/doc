@@ -26,7 +26,6 @@ is otherwise respected.
 - nhf_no_hinting:1         load glyphs unhinted (the hinting fix); 0 = stock behaviour
 - nhf_hinting_allowlist:   comma-separated families exempt from nhf_no_hinting
 - nhf_vertfix:1            fix vertical books under "better typography"; 0 = off
-- nhf_vertfix_debug:0      verbose vertical-fix logging (advanced; default off)
 
 Changes take effect on reboot.
 

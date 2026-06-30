@@ -134,9 +134,20 @@ Settings live in `KOBOeReader/.adds/nickelhintfix/config`:
 | `nhf_no_hinting` | `1` | The fix. `1` loads glyphs with `FT_LOAD_NO_HINTING` (no iType grid-fitting, so heights are consistent). `0` is stock behaviour. |
 | `nhf_hinting_allowlist` | *(empty)* | Comma-separated font families exempt from `nhf_no_hinting` (allowed to keep their own native hinting). Matched case-insensitively, e.g. `Georgia, Kobo Nickel`. |
 | `nhf_vertfix` | `1` | The vertical-text fix. `1` pushes `text-rendering:auto` onto vertical (tategaki) pages so they render correctly under "better typography". `0` leaves Nickel's behaviour unchanged. |
-| `nhf_vertfix_debug` | `0` | Verbose per-call logging for the vertical fix (advanced). `1` traces every `CustomWebView::setWritingDirection`; off by default. Not written to the default config. |
 
 Changes take effect on reboot.
+
+## Compatibility
+
+Both fixes patch the **Nickel/WebKit/iType software stack, not the panel hardware**, so this is **not specific to any one Kobo** — it should work across the device line (B&W or colour) on a compatible firmware. The real variable is the firmware **version**, not the model.
+
+It binds to **exact symbols** — there are no hardcoded offsets or magic numbers. The vertical writing-mode enum values are derived at runtime from Nickel's own `writingDirectionFromString`, and the page's `QWebSettings` is reached by *calling* `CustomWebView::settings()` rather than assuming a struct layout. So a firmware that merely shuffles internals still works.
+
+A firmware update **could** break a hook only by renaming/refactoring the symbols it binds (the C++ method names, the `KepubBookReader`/`CustomWebView`/`ReadingSettings` classes, or — very unlikely — the frozen Qt 5.2 `QWebSettings` API). That's uncommon for routine releases, and the same maintenance reality every Kobo mod lives with (NickelMenu, NickelClock, …). When it does happen, it **fails safe**:
+
+- Every vertical-fix symbol is `optional` — if one goes missing, the vertical fix logs it and goes **inert**; the hinting fix and the device keep working.
+- The startup log makes diagnosis a glance: `startup: vertical-fix syms: cwvSetDir=… cwvSettings=… setUserCss=… kepubCtor=… wdFromString=…`. Any `(nil)` is the symbol that moved.
+- The `FT_Load_Glyph` hinting hook is the one hard dependency, but it's a plain, long-stable FreeType C symbol; if it ever failed, the NickelHook failsafe (see Safety) disables the whole mod for the next boot rather than risking the device.
 
 ## Uninstall
 
