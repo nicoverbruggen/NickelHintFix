@@ -10,7 +10,7 @@ Each fix is independent and fail-safe. Individual fixes engage only if they can 
 
 ## What it fixes
 
-1. **Glyph "wobble"** — letters that drift a pixel up/down, giving an uneven line, on fonts with no hinting instructions. 
+1. **Glyph "wobble"**: letters that drift a pixel up/down, giving an uneven line, on fonts with no hinting instructions. 
 → loads unhinted fonts, so iType stops grid-fitting inconsistently.
 2. **Vertical (tategaki) CJK text** rendering sideways/misplaced under `optimizeLegibility`. 
 → keeps vertical books on WebKit's correct rendering path.
@@ -27,14 +27,19 @@ The point is to keep `optimizeLegibility` (which gets you ligatures, better text
 
 ## Prerequisite: enable `optimizeLegibility`
 
-Fix 1 (glyph wobble) is the standout — it's independent of everything below, needs no configuration, and is arguably the biggest single improvement the mod makes. It just works.
+The first fix (glyph wobble) is the standout, and has been my personal pet peeve with Kobo's renderer. This fix is independent of everything below, needs no configuration, and is arguably the biggest single improvement the mod makes. It just works for every font. Yay!
 
-Fixes 2–4, by contrast, only do anything when Kobo's WebKit **`optimizeLegibility`** text-rendering path is turned on — that's the path they correct. It's off by default and is a manual opt-in in the Kobo config file (**not** a UI setting). Edit `KOBOeReader/.kobo/Kobo/Kobo eReader.conf` and add:
+The other fixes, by contrast, only do anything when Kobo's WebKit **`optimizeLegibility`** text-rendering path is turned on. It's off by default and is a manual opt-in in the Kobo config file (**not** a UI setting). Edit `KOBOeReader/.kobo/Kobo/Kobo eReader.conf` and add:
 
     [Reading]
     webkitTextRendering=optimizeLegibility
 
-Then reboot. With this off, the vertical and justification fixes will correctly log that they engaged, but you won't see a difference because the broken render path is never taken.
+Then reboot. With this off, the vertical and justification fixes will correctly log that they engaged, but you won't see a difference because the broken render path is never taken. You now get the following with `optimizeLegibility` set:
+
+- Working GPOS functionality w/ fonts (improved tracking and kerning)
+- Hyphenation and ligatures (advanced font features)
+- Working justification (*fixed with this mod)
+- Working vertical text rendering (*fixed with this mod)
 
 ## Screenshots
 
