@@ -311,14 +311,20 @@ static void ntf_remove_superseded(void) {
         "/usr/local/Kobo/imageformats/libnickeljustifyfix.so",
         "/usr/local/Kobo/imageformats/libnickeljustifyfix.so.failsafe",
     };
-    for (size_t i = 0; i < sizeof(old_so) / sizeof(old_so[0]); i++)
-        if (access(old_so[i], F_OK) == 0 && unlink(old_so[i]) == 0)
-            NTF_LOG("removed superseded plugin %s", old_so[i]);
+    for (size_t i = 0; i < sizeof(old_so) / sizeof(old_so[0]); i++) {
+        if (access(old_so[i], F_OK) != 0) { NTF_DBG("superseded plugin %s not present (%s)", old_so[i], strerror(errno)); continue; }
+        if (unlink(old_so[i]) == 0) NTF_LOG("removed superseded plugin %s", old_so[i]);
+        else NTF_LOG("warning: could not remove superseded plugin %s (%s)", old_so[i], strerror(errno));
+    }
     static const char *old_dir[] = {
         "/mnt/onboard/.adds/nickelhintfix", "/mnt/onboard/.adds/nickeljustifyfix",
     };
-    for (size_t i = 0; i < sizeof(old_dir) / sizeof(old_dir[0]); i++)
-        if (access(old_dir[i], F_OK) == 0) { ntf_rmtree(old_dir[i]); NTF_LOG("removed superseded config dir %s", old_dir[i]); }
+    for (size_t i = 0; i < sizeof(old_dir) / sizeof(old_dir[0]); i++) {
+        if (access(old_dir[i], F_OK) != 0) { NTF_DBG("superseded config dir %s not present (%s)", old_dir[i], strerror(errno)); continue; }
+        ntf_rmtree(old_dir[i]);   // best-effort recursive delete; verify the result below
+        if (access(old_dir[i], F_OK) == 0) NTF_LOG("warning: could not fully remove superseded config dir %s", old_dir[i]);
+        else NTF_LOG("removed superseded config dir %s", old_dir[i]);
+    }
 }
 
 // ================= init =================
