@@ -21,6 +21,22 @@ otherwise. Nothing is written to any device library on disk; a boot without the 
 Ligatures/kerning stay on throughout — the point is to keep `optimizeLegibility` *and* have text
 render correctly. Cause + mechanism for each fix is in **[docs/how-it-works.md](docs/how-it-works.md)**.
 
+## Prerequisite: enable optimizeLegibility
+
+Fix 1 (glyph wobble) is the standout — it's independent of everything below, needs no
+configuration, and is arguably the biggest single improvement the mod makes. It just works.
+
+Fixes 2–4, by contrast, only do anything when Kobo's WebKit **`optimizeLegibility`** text-rendering
+path is turned on — that's the path they correct. It's off by default and is a manual opt-in in the
+Kobo config file (**not** a UI setting). Edit `KOBOeReader/.kobo/Kobo/Kobo eReader.conf` and add:
+
+    [Reading]
+    webkitTextRendering=optimizeLegibility
+
+Then reboot. With this off, the vertical and justification fixes will correctly log that they
+engaged, but you won't see a difference because the broken render path is never taken — while Fix 1
+keeps improving every book regardless.
+
 ## Screenshots
 
 <!-- TODO: drop before/after images into docs/img/ and they'll render here -->
