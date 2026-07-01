@@ -151,7 +151,11 @@ static const char *const NTF_VERT_CSS_URL =
     "data:text/css;charset=utf-8;base64,Knt0ZXh0LXJlbmRlcmluZzphdXRvICFpbXBvcnRhbnR9";
 static int  ntf_wd_vrl = -1, ntf_wd_vlr = -1;
 static bool ntf_vertfix_ready = false;
-static int  ntf_us_applied = -1;
+// De-dup guard for the user stylesheet: avoid redundant setUserStyleSheetUrl reflows when the same
+// view's writing mode is re-applied. Keyed on the view pointer so a second, distinct CustomWebView
+// (e.g. two live views) isn't mistaken for "already applied" and skipped — see setWritingDirection.
+static void *ntf_us_view    = nullptr;
+static int   ntf_us_applied = -1;
 
 static bool ntf_vertfix() { return ntf_global_config_bool("ntf_vertfix", true); }
 
@@ -407,6 +411,7 @@ extern "C" __attribute__((visibility("default")))
 void _ntf_cwv_setWritingDirection(void *self, int dir) {
     bool vert = ntf_vertfix_ready && (dir == ntf_wd_vrl || dir == ntf_wd_vlr);
     int want = vert ? 1 : 0;
+    if (self != ntf_us_view) { ntf_us_view = self; ntf_us_applied = -1; }  // new view: state unknown
     if (ntf_enabled() && ntf_vertfix() && ntf_vertfix_ready && want != ntf_us_applied) {
         ntf_apply_vertical_css(self, vert);
         ntf_us_applied = want;
