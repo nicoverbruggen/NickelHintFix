@@ -78,8 +78,9 @@ static bool nhf_safety_log_dumped = false;
 
 // --- Vertical-text fix (NickelVertFix) -----------------------------------------
 //
-// "Better typography" (eReader.conf webkitTextRendering=optimizeLegibility) makes Nickel
-// inject `text-rendering: optimizeLegibility`, which forces WebKit's *complex* text path.
+// "Better typography" (the KoboPatch Web UI label — https://kp.nicoverbruggen.be — for the
+// eReader.conf flag webkitTextRendering=optimizeLegibility) makes Nickel inject
+// `text-rendering: optimizeLegibility`, which forces WebKit's *complex* text path.
 // That path (QTextLayout-based) has NO vertical-writing-mode support, so vertical (tategaki)
 // CJK books lose per-glyph vertical orientation — the chōonpu `ー`, brackets `「」`, and
 // ideographic punctuation `、。` come out horizontal/mislaid. The *simple* path renders
@@ -341,6 +342,8 @@ extern "C" __attribute__((visibility("default"))) FT_Error _nhf_FT_Load_Glyph(FT
 
     // Load uninstructed glyphs without hinting so iType draws the raw
     // outline instead of grid-fitting it. Skipped for allow-listed families.
+    // Orthogonal to iType's CSM stem-weighting (the Font Weight control): that's
+    // set via FT_Set_CSM_Adjustments before the load, so it's unaffected here.
     FT_Int32 effective_flags = load_flags;
     if (nhf_enabled() && nhf_no_hinting() && !nhf_font_hinting_allowed(face))
         effective_flags |= NHF_FT_LOAD_NO_HINTING;

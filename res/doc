@@ -1,36 +1,26 @@
 # NickelHintFix
 
-Fixes a vertical "wobble" in Kobo's reader where individual letters drift up/down
-by a pixel, on fonts that ship no per-glyph hinting instructions.
-When Nickel requests hinted glyph loads, iType grid-fits those raw outlines itself
-and snaps the same letter to different pixel heights in different places.
+Fixes two font-rendering problems in Kobo's reader:
 
-NickelHintFix loads glyphs with FT_LOAD_NO_HINTING so iType draws the raw outline
-(as desktop FreeType does for these glyphs) and the line goes flat. iType stays the
-renderer.
+- "Wobble": some fonts render letters a pixel too high or low, giving an uneven
+  line. NickelHintFix flattens it.
+- Vertical (tategaki) CJK text coming out sideways/misplaced (the marks ー 「」 、。)
+  when "Better typography" is on. NickelHintFix corrects those pages, and leaves
+  horizontal books alone.
 
-## Vertical-text fix
-
-It also fixes vertical (tategaki) CJK books rendering wrong when "better typography"
-(eReader.conf webkitTextRendering=optimizeLegibility) is on. That setting forces
-WebKit's complex text path, which has no vertical-writing-mode support, so the chōonpu
-ー, brackets 「」, and punctuation 、。 come out horizontal/mislaid. For vertical views
-only, NickelHintFix pushes a user stylesheet (*{text-rendering:auto !important}) onto the
-page, which re-renders it on the simple path (the one that renders tategaki correctly).
-Horizontal books are untouched and keep "better typography", so your eReader.conf choice
-is otherwise respected.
+Requires firmware 4.21+ (4.x). Does not work on 5.x. See the README for the full
+write-up.
 
 ## Preferences (KOBOeReader/.adds/nickelhintfix/config)
 
-- nhf_enabled:1            enable/disable everything; 0 = behaves as if not installed
-- nhf_no_hinting:1         load glyphs unhinted (the hinting fix); 0 = stock behaviour
-- nhf_hinting_allowlist:   comma-separated families exempt from nhf_no_hinting
-- nhf_vertfix:1            fix vertical books under "better typography"; 0 = off
+- nhf_enabled:1            master switch; 0 = behaves as if not installed
+- nhf_no_hinting:1         the wobble fix; 0 = stock rendering
+- nhf_hinting_allowlist:   comma-separated font families to leave untouched (keep
+                           their normal hinting), e.g. Georgia, Kobo Nickel
+- nhf_vertfix:1            the vertical-text fix; 0 = off
 
 Changes take effect on reboot.
 
 ## Uninstall
 
-Delete KOBOeReader/.adds/nickelhintfix/uninstall and reboot. The mod never
-self-uninstalls on errors (a safety trip writes disabled-by-safety and keeps it
-inert until that marker is removed).
+Delete KOBOeReader/.adds/nickelhintfix/uninstall and reboot.
