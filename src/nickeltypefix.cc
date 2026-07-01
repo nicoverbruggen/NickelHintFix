@@ -165,6 +165,11 @@ static void ntf_apply_vertical_css(void *cwv, bool vertical) {
 }
 
 // ================= FIX 3+4: justification (in-memory byte patches) =================
+// TIMING: these edits run from ntf_init, which NickelHook calls from its library __constructor
+// as Nickel dlopen()s this plugin at startup — long before any book is opened. The patched
+// functions (QTextEngine::justify, isInterIdeographExpansionTarget) only execute during page
+// layout of an opened book, so no thread is mid-execution in them when we write. That is what
+// makes the non-atomic 2-byte writes safe; keep the patch phase in init if init ordering changes.
 // koboSpan fix — libQtGui, QTextEngine::justify, two sites (both required, both-or-nothing).
 static const unsigned char KOS_A_ANCHOR[] = { 0x15,0xF8,0x01,0x3C, 0xD8,0x06, 0x40,0xF1,0x9E,0x80, 0x04,0xE0 };
 static const unsigned char KOS_A_ORIG[]   = { 0x40,0xF1,0x9E,0x80 };   // bpl.w -> b.w (skip trim loop)
